@@ -30,8 +30,12 @@ namespace API.Data
                 .HasIndex(x => x.Email)
                 .IsUnique();
 
-                 
-   
+            modelBuilder.Entity<Wallet>()
+       .HasIndex(x => x.Reference)
+       .IsUnique();
+
+
+
         }
 
 

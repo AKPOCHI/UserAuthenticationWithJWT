@@ -1,0 +1,13 @@
+**/.vs
+**/.git
+**/.github
+**/bin
+**/obj
+**/out
+**/*.user
+**/*.suo
+**/[Ll]ogs
+**/*.md
+Dockerfile*
+docker-compose*
+.dockerignore

@@ -3,10 +3,10 @@ namespace API.Model
 {
     public class UserAuth
     {
+        public string Email { get; set; }
         public Guid Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string Email { get; set; }
         public string EmailVerificationStatus { get; set; }
         public string? ResetToken { get; set; }
         public DateTime? ResetTokenExpiry { get; set; }  // nullable is correct
