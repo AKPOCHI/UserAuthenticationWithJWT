@@ -21,7 +21,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ~/UserAuthenticationWithJWT
-            git pull origin main
+            eval "$(ssh-agent -s)"
+            ssh-add ~/github
+            git pull origin master
             docker compose up -d --build
             docker image prune -f
-            echo "✅ Deployment complete!"
+            echo "Deployment complete!"
