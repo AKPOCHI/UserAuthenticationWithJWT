@@ -75,7 +75,7 @@ public partial class Program
 
 
 
-        app.MapPost("/UserAuth", async (RegisterDto register, AppDbContext context, EmailService emailService) =>
+        app.MapPost("/Create-User", async (RegisterDto register, AppDbContext context, EmailService emailService) =>
         {
             if (register == null)
                 return Results.BadRequest("Missing credentials");
