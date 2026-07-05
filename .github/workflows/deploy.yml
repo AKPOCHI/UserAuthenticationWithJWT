@@ -19,10 +19,10 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cd ~/UserAuthenticationWithJWT
+          script:
+           cd ~/SmartTorch/AuthService |
             eval "$(ssh-agent -s)"
-            ssh-add ~/github
+            ssh-add ~/SmartTorch/AuthService/github
             git pull origin master
             docker compose up -d --build
             docker image prune -f
