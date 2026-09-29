@@ -2,7 +2,7 @@
 {
     public class Wallet
     {
-        public Guid Id { get; set; }  
+        public Guid Id { get; set; }  = Guid.NewGuid();
         public Guid UserAuthId { get; set; }   
         public string? ToEmail { get; set; } 
         public decimal Balance { get; set; } = decimal.Zero;    

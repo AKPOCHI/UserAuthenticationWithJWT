@@ -19,23 +19,28 @@ namespace API.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Tells PostgreSQL to generate a random UUID v4 upon INSERT
+            modelBuilder.Entity<UserAuth>()
+                .Property(u => u.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            modelBuilder.Entity<Wallet>()
+                .Property(w => w.Id)
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            // Relationships
             modelBuilder.Entity<UserAuth>()
                 .HasOne(x => x.Wallet)
                 .WithOne(p => p.UserAuth)
                 .HasForeignKey<Wallet>(p => p.UserAuthId);
-
-
 
             modelBuilder.Entity<UserAuth>()
                 .HasIndex(x => x.Email)
                 .IsUnique();
 
             modelBuilder.Entity<Wallet>()
-       .HasIndex(x => x.Reference)
-       .IsUnique();
-
-
-
+                .HasIndex(x => x.Reference)
+                .IsUnique();
         }
 
 

@@ -2,11 +2,14 @@ using API.Data;
 using API.Model;
 //using BCrypt.Net;
 using API.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography.Xml;
+using System.Text;
 using static API.Dtos.AuthDto;
 using static API.Dtos.PaystackDto;
 using static API.Dtos.TransactionDto;
@@ -34,9 +37,32 @@ public partial class Program
 
 
         builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-        builder.Services.AddScoped<JwtService>();
+        builder.Services.AddScoped<IJwtService, JwtService>();
         builder.Services.AddScoped<EmailService>();
         //builder.Services.AddScoped<>();
+
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
+        )
+    };
+});
+
+        builder.Services.AddAuthorization();
 
 
 
@@ -72,6 +98,13 @@ public partial class Program
 
         app.UseHttpsRedirection();
 
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+
+
+
+
 
 
 
@@ -93,36 +126,31 @@ public partial class Program
 
             var newUser = new UserAuth
             {
-                Id = Guid.NewGuid(),
+                //Id = Guid.NewGuid(),
                 FirstName = register.FirstName,
                 LastName = register.LastName,
                 Email = register.Email,
-                EmailVerificationStatus = "Unverified",
-                ResetToken = null,
-                ResetTokenExpiry = null,
                 PassWord = passwordHashed
+               
             };
 
             await context.UserAuths.AddAsync(newUser);
 
 
-
-            // ✅ Create a wallet for the new user
             var newWallet = new Wallet
             {
-                Id = Guid.NewGuid(),
-                UserAuthId = newUser.Id,
+                UserAuthId = newUser.Id, // <-- CRITICAL: Uses the auto-generated GUID from newUser
                 ToEmail = newUser.Email,
                 Balance = 0,
                 Reference = null
-               
             };
+
 
             await context.Wallets.AddAsync(newWallet);
            
-
             // ✅ Save both together in one transaction
             await context.SaveChangesAsync();
+
 
             await emailService.SendEmailAsync(register.Email, "SignUp successful", "Congratulations on your appointment");
 
@@ -139,53 +167,60 @@ public partial class Program
         });
 
 
-        //app.MapPost("/UserAuth", async (RegisterDto register, AppDbContext context, EmailService emailService) =>
+
+
+        app.MapPost("/Login", async (LoginDto login, AppDbContext context, IJwtService jwtService) =>
+        {
+            // 1. Validate request body
+            if (login == null || string.IsNullOrWhiteSpace(login.Email) || string.IsNullOrWhiteSpace(login.PassWord))
+            {
+                return Results.BadRequest("Email and password are required.");
+            }
+
+            // 2. Query user from database
+            var user = await context.UserAuths.FirstOrDefaultAsync(u => u.Email == login.Email);
+
+            // 3. Verify user exists and password matches (Unified 401 response for security)
+            if (user == null || string.IsNullOrEmpty(user.PassWord) || !BCrypt.Net.BCrypt.Verify(login.PassWord, user.PassWord))
+            {
+                return Results.Unauthorized(); // Returns HTTP 401 Unauthorized
+            }
+
+            // 4. Generate JWT
+            var token = jwtService.GenerateToken(user);
+
+            // 5. Return success response
+            return Results.Ok(new
+            {
+                token,
+                user = new
+                {
+                    user.Id,
+                    user.Email,
+                    user.FirstName,
+                    user.LastName
+                }
+            });
+        });
+
+
+
+
+
+
+        //app.MapPost("/Login", async (LoginDto login, AppDbContext context, IJwtService jwtService) =>
         //{
-        //    // Null check first before anything else
-        //    if (register == null)
-        //        return Results.BadRequest("Missing credentials");
+        //    //check that a user is in the database
+        //    var user = await context.UserAuths.FirstOrDefaultAsync(u => u.Email == login.Email);
+        //    if (user == null || user.PassWord == null)
+        //        return Results.BadRequest("Invalid user");
 
-        //    if (string.IsNullOrWhiteSpace(register.Email) ||
-        //        string.IsNullOrWhiteSpace(register.FirstName) ||
-        //        string.IsNullOrWhiteSpace(register.LastName) ||
-        //        string.IsNullOrWhiteSpace(register.PassWord))
-        //        return Results.BadRequest("Missing credentials");
+        //    if (!BCrypt.Net.BCrypt.Verify(login.PassWord, user.PassWord))
+        //        return Results.BadRequest("Wrong email or Paswword");
 
-        //    // Check email is not already taken
-        //    if (await context.UserAuths.AnyAsync(u => u.Email == register.Email)) // fix: was context.Email
-        //        return Results.BadRequest("Email already exists");
+        //    var token = jwtService.GenerateToken(user);
+        //    return Results.Ok(new { token });
 
-
-
-        //    // Hash the password
-        //    var passwordHashed = BCrypt.Net.BCrypt.HashPassword(register.PassWord);
-
-        //    // Map DTO to entity manually — EF cannot add a DTO directly
-        //    var newUser = new UserAuth
-        //    {
-        //        Id = Guid.NewGuid(),
-        //        FirstName = register.FirstName,
-        //        LastName = register.LastName,
-        //        Email = register.Email,
-        //        EmailVerificationStatus = "Unverified",
-        //        ResetToken = null,
-        //        ResetTokenExpiry = null,
-        //        PassWord = passwordHashed  // save the hash, not the raw password
-        //    };
-
-        //    await context.UserAuths.AddAsync(newUser);
-        //    await context.SaveChangesAsync();
-
-        //    await emailService.SendEmailAsync(register.Email, "SignUp successful", "Congratulations on your appointment");
-
-        //    return Results.Created($"/UserAuth/{newUser.Id}", new
-        //    {
-        //        newUser.Id,
-        //        newUser.FirstName,
-        //        newUser.LastName,
-        //        newUser.Email,
-        //        newUser.EmailVerificationStatus
-        //    });
 
 
         //});
@@ -196,33 +231,8 @@ public partial class Program
 
 
 
-
-
-        app.MapPost("/Login", async (LoginDto login, AppDbContext context, JwtService jwtService) =>
-        {
-            //check that a user is in the database
-            var user = await context.UserAuths.FirstOrDefaultAsync(u => u.Email == login.Email);
-            if (user == null || user.PassWord == null)
-                return Results.BadRequest("Invalid user");
-
-            if (!BCrypt.Net.BCrypt.Verify(login.PassWord, user.PassWord))
-                return Results.BadRequest("Wrong email or Paswword");
-
-            var token = jwtService.GenerateToken(user);
-            return Results.Ok(new { token });
-
-
-
-        });
-
-
-
-
-
-
-
-      //  / Initialize a payment
-app.MapPost("/payments/initialize", async (
+        //  / Initialize a payment
+        app.MapPost("/payments/initialize", async (
     InitializePaymentRequest request,AppDbContext context, 
     [FromServices]PaystackService paystack) =>
 {

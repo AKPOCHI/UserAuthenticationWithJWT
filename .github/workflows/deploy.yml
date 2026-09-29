@@ -20,10 +20,16 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+<<<<<<< HEAD
             cd ~/SmartTorch/AuthService
+=======
+            cd ~/AuthService
+>>>>>>> 604f41e (Configure JWT authentication and fixed wallet FK issue)
             eval "$(ssh-agent -s)"
             ssh-add ~/SmartTorch/AuthService/github
             git pull origin master
+           cp -r UserAuthenticationWithJWT/* .
+           cp -r UserAuthenticationWithJWT/.* . 2>/dev/null
             docker compose up -d --build
             docker image prune -f
             echo "Deployment complete!"
