@@ -14,6 +14,7 @@ namespace API.Data
         public string Email { get; internal set; }
         public DbSet <Transaction>Transactionss { get; set; }    
         public DbSet<Wallet>Wallets { get; set; }
+        public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
 
 
 
@@ -41,6 +42,18 @@ namespace API.Data
             modelBuilder.Entity<Wallet>()
                 .HasIndex(x => x.Reference)
                 .IsUnique();
+
+
+            modelBuilder.Entity<IdempotencyRecord>()
+       .HasIndex(x => new
+       {
+           x.UserId,
+           x.Method,
+           x.Path,
+           x.Key
+       })
+       .IsUnique();
+
         }
 
 

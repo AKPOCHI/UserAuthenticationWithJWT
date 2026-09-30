@@ -12,6 +12,9 @@ using System.Text;
 using static API.Dtos.AuthDto;
 using static API.Dtos.PaystackDto;
 using static API.Dtos.TransactionDto;
+using API.Middleware;
+
+
 
 public partial class Program
 {
@@ -45,7 +48,10 @@ public partial class Program
 
         // Application services
         builder.Services.AddScoped<IJwtService, JwtService>();
-        builder.Services.AddScoped<EmailService>();
+        builder.Services.AddScoped<EmailService>(); 
+        
+
+
 
 
         // =========================================================
@@ -80,7 +86,6 @@ public partial class Program
 
         // Authorization
         builder.Services.AddAuthorization();
-
 
         // =========================================================
         // SWAGGER / OPENAPI
@@ -145,6 +150,7 @@ public partial class Program
         // Authentication MUST come before Authorization
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMiddleware<IdempotencyMiddleware>();
 
 
         // =========================================================
@@ -624,6 +630,9 @@ public partial class Program
                 });
             })
             .RequireAuthorization();
+            
+
+
 
 
         // =========================================================
